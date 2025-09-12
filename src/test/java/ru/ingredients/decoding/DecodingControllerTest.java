@@ -5,9 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.ingredients.category.StringToCategoryDTOConverter;
+import ru.ingredients.config.WebSecurityConfig;
 import ru.ingredients.ingredient.IngredientDTO;
 
 import java.util.List;
@@ -25,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 value = StringToCategoryDTOConverter.class
         )
 )
+@Import(WebSecurityConfig.class)
 class DecodingControllerTest {
 
     @Autowired
@@ -41,7 +44,7 @@ class DecodingControllerTest {
         //when //then
         mockMvc.perform(post("/decoding")
                         .param("text", text))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/decoding"));
     }
 

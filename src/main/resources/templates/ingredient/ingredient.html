@@ -1,5 +1,6 @@
 <!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org" lang="ru" class="h-100"
+      xmlns:sec="http://www.w3.org/1999/xhtml"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.thymeleaf.org ">
 <head>
@@ -32,7 +33,7 @@
             <p th:if="${!#strings.isEmpty(ingredient.description)}"><b>Описание: </b>
                 <span th:text="${ingredient.description}"></span></p>
 
-            <form th:action="'/ingredients/' + ${ingredient.id}" th:method="delete">
+            <form sec:authorize="isAuthenticated()" th:action="'/ingredients/' + ${ingredient.id}" th:method="delete">
                 <a th:href="'/ingredients/' + ${ingredient.id} + '/edit'" class="btn btn-secondary">Редактировать</a>
                 <button class="btn btn-secondary" type="submit">Удалить</button>
             </form>
