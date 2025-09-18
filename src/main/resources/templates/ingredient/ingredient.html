@@ -44,10 +44,34 @@
             <p th:if="${!#strings.isEmpty(ingredient.description)}"><b>Описание: </b>
                 <span th:text="${ingredient.description}"></span></p>
 
-            <form sec:authorize="isAuthenticated()" th:action="'/ingredients/' + ${ingredient.id}" th:method="delete">
+            <form sec:authorize="isAuthenticated()">
                 <a th:href="'/ingredients/' + ${ingredient.id} + '/edit'" class="btn btn-secondary">Редактировать</a>
-                <button class="btn btn-secondary" type="submit">Удалить</button>
+                <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    Удалить
+                </button>
             </form>
+
+            <!-- Окно подтверждения удаления -->
+            <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Подтверждение удаления</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            Вы уверены, что хотите удалить ингредиент <b th:text="${ingredient.inci}"></b>?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <form th:action="'/ingredients/' + ${ingredient.id}" th:method="delete">
+                                <button type="submit" class="btn btn-danger">Удалить</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
