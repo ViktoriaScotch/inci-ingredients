@@ -58,7 +58,7 @@ class DecodingControllerTest {
         List<IngredientDTO> foundIngredients = List.of(ing1);
         Map<String, List<IngredientDTO>> ingByCat = Map.of("Category", foundIngredients);
 
-        when(decodingService.findIng(text)).thenReturn(allIngredients);
+        when(decodingService.decode(text)).thenReturn(allIngredients);
         when(decodingService.groupByCat(foundIngredients)).thenReturn(ingByCat);
 
         //when //then
@@ -71,7 +71,7 @@ class DecodingControllerTest {
                 .andExpect(model().attribute("allIngredients", allIngredients))
                 .andExpect(model().attribute("foundIngredients", foundIngredients));
 
-        verify(decodingService).findIng(text);
+        verify(decodingService).decode(text);
         verify(decodingService).groupByCat(foundIngredients);
     }
 }

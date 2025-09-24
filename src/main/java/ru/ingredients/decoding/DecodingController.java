@@ -29,7 +29,7 @@ public class DecodingController {
 
     @GetMapping(value = "/decoding")
     public String getDecoding(@ModelAttribute("text") String text, Model model) {
-        List<IngredientDTO> allIngredients = decodingService.findIng(text);
+        List<IngredientDTO> allIngredients = decodingService.decode(text);
         List<IngredientDTO> foundIngredients = allIngredients.stream().filter(i -> i.getInci() != null).toList();
         Map<String, List<IngredientDTO>> ingByCat = decodingService.groupByCat(foundIngredients);
 

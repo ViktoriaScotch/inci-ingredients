@@ -2,45 +2,37 @@ package ru.ingredients.decoding;
 
 import org.springframework.stereotype.Service;
 import ru.ingredients.category.CategoryDTO;
-import ru.ingredients.ingredient.Ingredient;
-import ru.ingredients.ingredient.IngredientDTO;
-import ru.ingredients.ingredient.IngredientMapper;
-import ru.ingredients.ingredient.IngredientRepository;
+import ru.ingredients.ingredient.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import static ru.ingredients.utils.NormalizationUtils.normalize;
 
 @Service
 public class DecodingService {
 
-    private final IngredientRepository ingredientRepository;
+    private final IngredientService ingredientService;
 
-    private final IngredientMapper ingredientMapper;
-
-    public DecodingService(IngredientRepository ingredientRepository, IngredientMapper ingredientMapper) {
-        this.ingredientRepository = ingredientRepository;
-        this.ingredientMapper = ingredientMapper;
+    public DecodingService(IngredientService ingredientService) {
+        this.ingredientService = ingredientService;
     }
 
-    private static final String REGEX_INSIDE_PARENTHESES = "\\(.+?\\)";
-    private static final String REGEX_NON_ALPHANUMERIC = "[^a-zA-Zа-яА-Я0-9]+";
-
-    public List<IngredientDTO> findIng(String text) {
+    public List<IngredientDTO> decode(String text) {
         // выходим из метода, если передан пустой параметр
         if (text == null || text.isBlank()) return List.of();
 
-        // отделяем имена через запятую
-        List<String> separateNames = List.of(text.split(", "));
+        // отделяем имена через запятую, убираем пустые значения, пробелы в начале и в конце
+        List<String> separateNames = Arrays.stream(text.split(", "))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
 
-        //нормализуем имена, делаем по ним запрос в БД
-        List<String> normalizedNames = separateNames.stream().map(this::normalize).toList();
-        List<Ingredient> foundIngredients = ingredientRepository.findByAllNames(normalizedNames);
+        // делаем запрос в БД
+        List<IngredientDTO> foundIngredients = ingredientService.getIngredientsByAllNames(separateNames);
 
         // сохраняем все имена найденных ингредиентов, чтобы отфильтровать нераспознанные
-        Map<String, Ingredient> foundMap = new HashMap<>();
-        for (Ingredient ing : foundIngredients) {
+        Map<String, IngredientDTO> foundMap = new HashMap<>();
+        for (IngredientDTO ing : foundIngredients) {
             foundMap.put(normalize(ing.getInci()), ing);
             foundMap.put(normalize(ing.getTradeName()), ing);
             ing.getOtherNames().forEach(n -> foundMap.put(normalize(n), ing));
@@ -48,20 +40,18 @@ public class DecodingService {
 
         // проходимся по списку наименований, чтобы вернуть распознанные
         // и нераспознанные ингредиенты в изначальном порядке состава
-        List<Ingredient> result = new ArrayList<>();
+        List<IngredientDTO> result = new ArrayList<>();
         for (String name : separateNames) {
-            Ingredient ing = foundMap.get(normalize(name)); //проверяем, если ли имя в списке распознанных
+            IngredientDTO ing = foundMap.get(normalize(name)); //проверяем, если ли имя в списке распознанных
             if (ing != null) {
                 result.add(ing); //если распознан, сохраняем ингредиент
             } else {
-                result.add(new Ingredient().setTradeName(name)); //если нет, создаем пустой объект с нераспознанным именем
+                result.add(new IngredientDTO().setTradeName(name)); //если нет, создаем пустой объект с нераспознанным именем
             }
         }
 
-        // возвращаем результат в формате DTO (при маппинге отдельно подтянутся категории найденных ингредиентов)
-        return result.stream().map(ingredientMapper::toDto).toList();
+        return result;
     }
-
 
     public Map<String, List<IngredientDTO>> groupByCat(List<IngredientDTO> ingredients) {
         Map<String, List<IngredientDTO>> ingByCat = new HashMap<>();
@@ -71,12 +61,5 @@ public class DecodingService {
             }
         }
         return ingByCat;
-    }
-
-    private String normalize(String s) {
-        return s == null ? "" : s
-                .replaceAll(REGEX_INSIDE_PARENTHESES, "") //убирается информация в скобках
-                .replaceAll(REGEX_NON_ALPHANUMERIC, "") //убираются все не цифро-буквенные символы
-                .toLowerCase(); //приводится к нижнему регистру
     }
 }

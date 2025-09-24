@@ -1,6 +1,7 @@
 package ru.ingredients.ingredient;
 
 import org.springframework.stereotype.Service;
+import ru.ingredients.utils.NormalizationUtils;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -32,5 +33,12 @@ public class IngredientService {
         if (ingredientRepository.existsById(id)) {
             ingredientRepository.deleteById(id);
         } else throw new NoSuchElementException();
+    }
+
+    public List<IngredientDTO> getIngredientsByAllNames(List<String> names) {
+        if (names == null || names.isEmpty()) return List.of();
+        List<String> normalizedNames = names.stream().map(NormalizationUtils::normalize).toList();
+        List<Ingredient> foundIngredients = ingredientRepository.findByAllNames(normalizedNames);
+        return foundIngredients.stream().map(ingredientMapper::toDto).toList();
     }
 }

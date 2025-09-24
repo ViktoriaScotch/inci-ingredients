@@ -11,7 +11,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.ingredients.category.CategoryDTO;
-import ru.ingredients.ingredient.*;
+import ru.ingredients.ingredient.IngredientDTO;
+import ru.ingredients.ingredient.IngredientService;
 
 import java.util.List;
 import java.util.Map;
@@ -26,98 +27,75 @@ import static org.mockito.Mockito.*;
 class DecodingServiceTest {
 
     @Mock
-    private IngredientRepository ingredientRepository;
-
-    private final IngredientMapper ingredientMapper = new IngredientMapperImpl();
+    private IngredientService ingredientService;
 
     private DecodingService decodingService;
 
-    private Ingredient ing1;
-    private Ingredient ing2;
-
-    private IngredientDTO dto1;
-    private IngredientDTO dto2;
+    private IngredientDTO ing1;
+    private IngredientDTO ing2;
 
     @BeforeEach
     void setUp() {
-        decodingService = new DecodingService(ingredientRepository, ingredientMapper);
+        decodingService = new DecodingService(ingredientService);
 
-        ing1 = new Ingredient().setInci("Name (with parentheses)").setOtherNames(Set.of("Other name"));
-        ing2 = new Ingredient().setInci("Name-123").setTradeName("Trade name");
-
-        dto1 = ingredientMapper.toDto(ing1);
-        dto2 = ingredientMapper.toDto(ing2);
+        ing1 = new IngredientDTO().setInci("Name (with parentheses)").setOtherNames(Set.of("Other name"));
+        ing2 = new IngredientDTO().setInci("Name-123").setTradeName("Trade name");
     }
 
     @Test
-    void findIng_SearchForAllNames() {
+    void decode_searchForAllNames() {
         //given
-        Ingredient ing3 = new Ingredient().setInci("INCI name");
-        IngredientDTO dto3 = ingredientMapper.toDto(ing3);
+        IngredientDTO ing3 = new IngredientDTO().setInci("INCI name");
 
-        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of(ing1, ing2, ing3));
+        when(ingredientService.getIngredientsByAllNames(anyList())).thenReturn(List.of(ing1, ing2, ing3));
 
         //when
-        List<IngredientDTO> result = decodingService.findIng("Other name, Trade name, INCI name");
+        List<IngredientDTO> result = decodingService.decode("Other name, Trade name, INCI name");
 
         //then
-        assertThat(result).containsExactlyInAnyOrderElementsOf(List.of(dto1, dto2, dto3));
-        verify(ingredientRepository).findByAllNames(anyList());
+        assertThat(result).containsExactlyInAnyOrderElementsOf(List.of(ing1, ing2, ing3));
+        verify(ingredientService).getIngredientsByAllNames(anyList());
     }
 
     @Test
-    void findIng_ReturnsIngInCorrectOrder() {
+    void decode_returnsIngInCorrectOrder() {
         //given
-        Ingredient ing3 = new Ingredient().setInci("INCI name");
-        IngredientDTO dto3 = ingredientMapper.toDto(ing3);
-        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of(ing1, ing2, ing3));
+        IngredientDTO ing3 = new IngredientDTO().setInci("INCI name");
+        when(ingredientService.getIngredientsByAllNames(anyList())).thenReturn(List.of(ing1, ing2, ing3));
 
         //when
-        List<IngredientDTO> result = decodingService.findIng("INCI name, Trade name, Other name");
+        List<IngredientDTO> result = decodingService.decode("INCI name, Trade name, Other name");
 
         //then
-        assertThat(result).containsExactlyElementsOf(List.of(dto3, dto2, dto1));
-        verify(ingredientRepository).findByAllNames(anyList());
+        assertThat(result).containsExactlyElementsOf(List.of(ing3, ing2, ing1));
+        verify(ingredientService).getIngredientsByAllNames(anyList());
     }
 
     @Test
-    void findIng_ForNormalizeNames() {
-        //given
-        when(ingredientRepository.findByAllNames(List.of("name", "name123"))).thenReturn(List.of(ing1, ing2));
-
-        //when
-        List<IngredientDTO> result = decodingService.findIng("Name (with parentheses), Name-123");
-
-        //then
-        assertThat(result).containsExactlyInAnyOrderElementsOf(List.of(dto1, dto2));
-        verify(ingredientRepository).findByAllNames(List.of("name", "name123"));
-    }
-
-    @Test
-    void findIng_ReturnsNewIngWhenNotFound() {
+    void decode_returnsNewIngWhenNotFound() {
         //given
         String unknown = "Unknown";
         IngredientDTO dto = new IngredientDTO().setTradeName(unknown);
-        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of());
+        when(ingredientService.getIngredientsByAllNames(anyList())).thenReturn(List.of());
 
         //when
-        List<IngredientDTO> result = decodingService.findIng(unknown);
+        List<IngredientDTO> result = decodingService.decode(unknown);
 
         //then
         assertThat(result).containsExactlyInAnyOrderElementsOf(List.of(dto));
-        verify(ingredientRepository).findByAllNames(anyList());
+        verify(ingredientService).getIngredientsByAllNames(anyList());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"  "})
-    void findIng_ReturnsEmptyForNullOrBlank(String source) {
+    void decode_returnsEmptyForNullOrBlank(String source) {
         //given //when
-        List<IngredientDTO> result = decodingService.findIng(source);
+        List<IngredientDTO> result = decodingService.decode(source);
 
         //then
         assertThat(result).isEmpty();
-        verifyNoInteractions(ingredientRepository);
+        verifyNoInteractions(ingredientService);
     }
 
     @Test
@@ -125,16 +103,16 @@ class DecodingServiceTest {
         //given
         CategoryDTO cat1 = new CategoryDTO(1L, "Category 1");
         CategoryDTO cat2 = new CategoryDTO(2L, "Category 2");
-        dto1.setCategories(Set.of(cat1, cat2));
-        dto2.setCategories(Set.of(cat1));
+        ing1.setCategories(Set.of(cat1, cat2));
+        ing2.setCategories(Set.of(cat1));
 
         //when
-        Map<String, List<IngredientDTO>> result = decodingService.groupByCat(List.of(dto1, dto2));
+        Map<String, List<IngredientDTO>> result = decodingService.groupByCat(List.of(ing1, ing2));
 
         //then
         assertThat(result).hasSize(2);
-        assertThat(result.get(cat1.getName())).containsExactlyInAnyOrderElementsOf(List.of(dto2, dto1));
-        assertThat(result.get(cat2.getName())).containsExactlyInAnyOrderElementsOf(List.of(dto1));
+        assertThat(result.get(cat1.getName())).containsExactlyInAnyOrderElementsOf(List.of(ing2, ing1));
+        assertThat(result.get(cat2.getName())).containsExactlyInAnyOrderElementsOf(List.of(ing1));
     }
 
     @ParameterizedTest
