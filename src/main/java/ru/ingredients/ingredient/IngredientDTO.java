@@ -1,5 +1,6 @@
 package ru.ingredients.ingredient;
 
+import jakarta.validation.constraints.NotBlank;
 import ru.ingredients.category.CategoryDTO;
 
 import java.util.HashSet;
@@ -10,8 +11,10 @@ public class IngredientDTO {
 
     private Long id;
 
+    @NotBlank(message = "Название не может быть пустым")
     private String inci;
 
+    @NotBlank(message = "Название не может быть пустым")
     private String tradeName;
 
     private String description;

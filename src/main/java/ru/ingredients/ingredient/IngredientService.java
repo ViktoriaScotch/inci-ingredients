@@ -3,8 +3,10 @@ package ru.ingredients.ingredient;
 import org.springframework.stereotype.Service;
 import ru.ingredients.utils.NormalizationUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Service
 public class IngredientService {
@@ -25,8 +27,16 @@ public class IngredientService {
         return ingredientRepository.findById(id).map(ingredientMapper::toDto).orElseThrow();
     }
 
-    public void saveIngredient(IngredientDTO ingredient) {
-        ingredientRepository.save(ingredientMapper.toEntity(ingredient));
+    public IngredientDTO saveIngredient(IngredientDTO ingToSave) {
+        // перед сохранением проверяем, что нет ингредиентов с такими же наименованиями
+        List<IngredientDTO> existingIng = getIngredientsWithSameNames(ingToSave);
+        if (!existingIng.isEmpty()) {
+            String ingIds = existingIng.stream().map(IngredientDTO::getId).map(String::valueOf).collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Перепроверьте все указанные наименования, есть совпадения с id " + ingIds);
+        }
+        // сохраняем ингредиент
+        Ingredient savedIng = ingredientRepository.save(ingredientMapper.toEntity(ingToSave));
+        return ingredientMapper.toDto(savedIng);
     }
 
     public void deleteIngredient(long id) {
@@ -40,5 +50,21 @@ public class IngredientService {
         List<String> normalizedNames = names.stream().map(NormalizationUtils::normalize).toList();
         List<Ingredient> foundIngredients = ingredientRepository.findByAllNames(normalizedNames);
         return foundIngredients.stream().map(ingredientMapper::toDto).toList();
+    }
+
+    private List<IngredientDTO> getIngredientsWithSameNames(IngredientDTO ingToCheck) {
+        // создаем список всех имен для поиска совпадений
+        List<String> allNamesToCheck = new ArrayList<>(ingToCheck.getOtherNames());
+        allNamesToCheck.add(ingToCheck.getInci());
+        allNamesToCheck.add(ingToCheck.getTradeName());
+
+        // получаем ингредиенты с этими именами из БД
+        List<IngredientDTO> existingIng = new ArrayList<>(getIngredientsByAllNames(allNamesToCheck));
+
+        //если ингредиент уже существует, удаляем его наименования
+        if (ingToCheck.getId() != null) {
+            existingIng.removeIf(i -> i.getId().equals(ingToCheck.getId()));
+        }
+        return existingIng;
     }
 }

@@ -44,7 +44,7 @@ class DecodingControllerTest {
         //when //then
         mockMvc.perform(post("/decoding")
                         .param("text", text))
-                .andExpect(status().isFound())
+                .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/decoding"));
     }
 

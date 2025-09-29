@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -11,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,7 +68,7 @@ class IngredientServiceTest {
     }
 
     @Test
-    void getIngredientById_ThrowsExceptionWhenNotFound() {
+    void getIngredientById_throwsNoSuchElementExceptionWhenNotFound() {
         //given
         long id = 0L;
         when(ingredientRepository.findById(id)).thenReturn(Optional.empty());
@@ -91,6 +93,96 @@ class IngredientServiceTest {
     }
 
     @Test
+    void saveIngredient_returnsDTO() {
+        //given
+        Ingredient ing = new Ingredient().setId(1L).setInci("ing");
+        IngredientDTO dto = ingredientMapper.toDto(ing);
+
+        when(ingredientRepository.save(ing)).thenReturn(ing);
+
+        //when
+        IngredientDTO result = ingredientService.saveIngredient(dto);
+
+        //then
+        verify(ingredientRepository).save(ing);
+        assertThat(result).isEqualTo(dto);
+    }
+
+    @Test
+    void saveIngredient_whenEditingExisting() {
+        //given
+        Ingredient existingIng = new Ingredient()
+                .setId(1L)
+                .setInci("inci")
+                .setTradeName("trade");
+        IngredientDTO dtoWithChanges = new IngredientDTO()
+                .setId(1L)
+                .setInci("inci")
+                .setTradeName("changed trade");
+        Ingredient savedIng = ingredientMapper.toEntity(dtoWithChanges);
+
+        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of(existingIng));
+
+        //when
+        ingredientService.saveIngredient(dtoWithChanges);
+
+        //then
+        verify(ingredientRepository).save(savedIng);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "existing inci, trade, other",
+            "inci, existing trade, other",
+            "inci, trade, existing other"
+    })
+    void saveIngredient_throwsIllegalArgumentExceptionWhenAnyNameAlreadyExists(String inci, String trade, String other) {
+        //given
+        Ingredient existingIng = new Ingredient().setId(1L)
+                .setInci("existing inci")
+                .setTradeName("existing trade")
+                .setOtherNames(Set.of("existing other"));
+        IngredientDTO dtoToSave = new IngredientDTO()
+                .setInci(inci)
+                .setTradeName(trade)
+                .setOtherNames(Set.of(other));
+
+        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of(existingIng));
+
+        //when //then
+        assertThatThrownBy(() -> ingredientService.saveIngredient(dtoToSave))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(existingIng.getId().toString());
+        verify(ingredientRepository).findByAllNames(anyList());
+        verify(ingredientRepository, never()).save(any());
+    }
+
+    @Test
+    void saveIngredient_throwsIllegalArgumentExceptionWhenNameAlreadyExistsInMultiple() {
+        //given
+        Ingredient existingIng1 = new Ingredient()
+                .setId(1L)
+                .setInci("existing1")
+                .setTradeName("trade");
+        Ingredient existingIng2 = new Ingredient()
+                .setId(2L)
+                .setInci("inci")
+                .setTradeName("existing2");
+        IngredientDTO dtoToSave = new IngredientDTO()
+                .setInci(existingIng1.getInci())
+                .setTradeName(existingIng2.getTradeName());
+
+        when(ingredientRepository.findByAllNames(anyList())).thenReturn(List.of(existingIng1, existingIng2));
+
+        //when //then
+        assertThatThrownBy(() -> ingredientService.saveIngredient(dtoToSave))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContainingAll(existingIng1.getId().toString(), existingIng2.getId().toString());
+        verify(ingredientRepository).findByAllNames(anyList());
+        verify(ingredientRepository, never()).save(any());
+    }
+
+    @Test
     void deleteIngredient() {
         //given
         long id = 1L;
@@ -105,7 +197,7 @@ class IngredientServiceTest {
     }
 
     @Test
-    void deleteIngredient_ThrowsExceptionWhenNotFound() {
+    void deleteIngredient_throwsNoSuchElementExceptionWhenNotFound() {
         //given
         long id = 0L;
         when(ingredientRepository.existsById(id)).thenReturn(false);

@@ -13,9 +13,9 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
             SELECT DISTINCT i
             FROM Ingredient i
             LEFT JOIN FETCH i.otherNames o
-            WHERE LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', i.inci, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :names
-               OR LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', i.tradeName, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :names
-               OR LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', o, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :names
+            WHERE LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', i.inci, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :normalizedNames
+               OR LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', i.tradeName, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :normalizedNames
+               OR LOWER(FUNCTION('REGEXP_REPLACE', FUNCTION('REGEXP_REPLACE', o, '\\(.+?\\)', ''), '\\W+', '', 'g')) IN :normalizedNames
             """)
-    List<Ingredient> findByAllNames(@Param("names") List<String> names);
+    List<Ingredient> findByAllNames(@Param("normalizedNames") List<String> normalizedNames);
 }

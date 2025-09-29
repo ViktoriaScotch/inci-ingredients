@@ -1,8 +1,11 @@
 package ru.ingredients.ingredient;
 
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.ingredients.category.CategoryService;
 
 import java.util.NoSuchElementException;
@@ -32,17 +35,26 @@ public class IngredientController {
     }
 
     @PostMapping("/new")
-    public String createIngredient(@ModelAttribute("ingredient") IngredientDTO ingredient) {
-        ingredientService.saveIngredient(ingredient);
-        return "redirect:/ingredients";
+    public String createIngredient(@Valid @ModelAttribute("ingredient") IngredientDTO ingredient, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "ingredient/ingredient-new";
+        }
+        try {
+            ingredient = ingredientService.saveIngredient(ingredient);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("duplicate", e.getMessage());
+            return "ingredient/ingredient-new";
+        }
+        return "redirect:/ingredients/" + ingredient.getId();
     }
 
     @GetMapping("/{id}")
-    public String getIngredient(@PathVariable(value = "id") long id, Model model) {
+    public String getIngredient(@PathVariable(value = "id") long id, Model model, RedirectAttributes redirectAttributes) {
         IngredientDTO ingredient;
         try {
             ingredient = ingredientService.getIngredientById(id);
         } catch (NoSuchElementException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Ингредиент не найден");
             return "redirect:/ingredients";
         }
         model.addAttribute("ingredient", ingredient);
@@ -50,11 +62,12 @@ public class IngredientController {
     }
 
     @GetMapping("/{id}/edit")
-    public String getEditIngredientForm(@PathVariable(value = "id") long id, Model model) {
+    public String getEditIngredientForm(@PathVariable(value = "id") long id, Model model, RedirectAttributes redirectAttributes) {
         IngredientDTO ingredient;
         try {
             ingredient = ingredientService.getIngredientById(id);
         } catch (NoSuchElementException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Ингредиент не найден");
             return "redirect:/ingredients";
         }
         model.addAttribute("allCategories", categoryService.getAllCategories());
@@ -63,8 +76,16 @@ public class IngredientController {
     }
 
     @PatchMapping(value = "/{id}/edit")
-    public String updateIngredient(@ModelAttribute("ingredient") IngredientDTO ingredient) {
-        ingredientService.saveIngredient(ingredient);
+    public String updateIngredient(@Valid @ModelAttribute("ingredient") IngredientDTO ingredient, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "ingredient/ingredient-edit";
+        }
+        try {
+            ingredientService.saveIngredient(ingredient);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("duplicate", e.getMessage());
+            return "ingredient/ingredient-edit";
+        }
         return "redirect:/ingredients/{id}";
     }
 
