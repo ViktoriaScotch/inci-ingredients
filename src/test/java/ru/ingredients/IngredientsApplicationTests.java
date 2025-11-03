@@ -1,10 +1,12 @@
 package ru.ingredients;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class IngredientsApplicationTests {
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class IngredientsApplicationTests extends AbstractTestcontainers {
 
     @Test
     void contextLoads() {
